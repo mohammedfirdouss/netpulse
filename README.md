@@ -245,7 +245,6 @@ internal/scheduler/    per-target goroutines
 deploy/                Prometheus config, alert rules, Grafana provisioning
 scripts/               fault injection
 lab/bgp/               BGP convergence lab (containerlab + FRR)
-docs/GUIDE.md          original build guide and deviations from it
 ```
 
 ## Roadmap
