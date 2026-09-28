@@ -1,0 +1,88 @@
+# Triangle of eBGP routers with a host behind r1 and r3.
+#
+#           r2 (AS65002)
+#          /            \
+#   10.0.12.0/30    10.0.23.0/30
+#        /                \
+#   r1 (AS65001) ------- r3 (AS65003)
+#        |   10.0.13.0/30   |
+#   h1 192.168.1.10     h2 192.168.3.10
+#
+# Primary path h1 -> h2 is r1 -> r3 (AS path 65003).
+# Backup is r1 -> r2 -> r3 (AS path 65002 65003).
+name: bgp
+
+mgmt:
+  network: clab-bgp-mgmt
+  ipv4-subnet: 172.20.20.0/24
+
+topology:
+  kinds:
+    linux:
+      image: quay.io/frrouting/frr:10.4.1
+
+  nodes:
+    r1:
+      kind: linux
+      binds:
+        - r1/frr.conf:/etc/frr/frr.conf
+        - daemons:/etc/frr/daemons
+        - vtysh.conf:/etc/frr/vtysh.conf
+    r2:
+      kind: linux
+      binds:
+        - r2/frr.conf:/etc/frr/frr.conf
+        - daemons:/etc/frr/daemons
+        - vtysh.conf:/etc/frr/vtysh.conf
+    r3:
+      kind: linux
+      binds:
+        - r3/frr.conf:/etc/frr/frr.conf
+        - daemons:/etc/frr/daemons
+        - vtysh.conf:/etc/frr/vtysh.conf
+
+    h1:
+      kind: linux
+      image: nicolaka/netshoot
+      mgmt-ipv4: 172.20.20.11
+      binds:
+        - bin/netpulse:/usr/local/bin/netpulse
+        - netpulse.yaml:/etc/netpulse.yaml
+      exec:
+        - ip addr add 192.168.1.10/24 dev eth1
+        - ip route add 192.168.3.0/24 via 192.168.1.1
+        - sh -c "nohup netpulse -config /etc/netpulse.yaml > /var/log/netpulse.log 2>&1 &"
+    h2:
+      kind: linux
+      image: nicolaka/netshoot
+      exec:
+        - ip addr add 192.168.3.10/24 dev eth1
+        - ip route add 192.168.1.0/24 via 192.168.3.1
+
+    prometheus:
+      kind: linux
+      image: prom/prometheus:v3.5.0
+      mgmt-ipv4: 172.20.20.20
+      binds:
+        - prometheus.yml:/etc/prometheus/prometheus.yml
+      ports: ["9090:9090"]
+    grafana:
+      kind: linux
+      image: grafana/grafana:12.1.0
+      mgmt-ipv4: 172.20.20.30
+      env:
+        GF_AUTH_ANONYMOUS_ENABLED: "true"
+        GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      binds:
+        - grafana/datasource.yml:/etc/grafana/provisioning/datasources/prometheus.yml
+        - ../../deploy/grafana/provisioning/dashboards/netpulse.yml:/etc/grafana/provisioning/dashboards/netpulse.yml
+        - ../../deploy/grafana/dashboards:/var/lib/grafana/dashboards
+        - grafana/dashboards:/var/lib/grafana/dashboards/lab
+      ports: ["3000:3000"]
+
+  links:
+    - endpoints: ["r1:eth1", "r2:eth1"]
+    - endpoints: ["r2:eth2", "r3:eth1"]
+    - endpoints: ["r1:eth2", "r3:eth2"]
+    - endpoints: ["r1:eth3", "h1:eth1"]
+    - endpoints: ["r3:eth3", "h2:eth1"]

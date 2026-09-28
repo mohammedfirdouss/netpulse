@@ -1,0 +1,9 @@
+# NetPulse on h1, probing h2 across the BGP triangle.
+listen_addr: ":9101"
+targets:
+  - name: h2
+    type: icmp
+    address: 192.168.3.10
+    interval: 1s
+    timeout: 500ms
+    count: 1

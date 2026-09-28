@@ -1,0 +1,3 @@
+bin/
+# containerlab runtime state (includes a generated CA private key)
+clab-*/

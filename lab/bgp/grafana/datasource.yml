@@ -1,0 +1,7 @@
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    url: http://172.20.20.20:9090
+    isDefault: true
