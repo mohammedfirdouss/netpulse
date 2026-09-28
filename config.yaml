@@ -1,0 +1,25 @@
+listen_addr: ":9101"
+targets:
+  # ICMP and TCP against the same host, so RTT and handshake time can be
+  # compared directly.
+  - name: cloudflare
+    type: icmp
+    address: 1.1.1.1
+    interval: 10s
+    timeout: 3s
+    count: 5
+  - name: cloudflare-https
+    type: tcp
+    address: 1.1.1.1:443
+    interval: 10s
+    timeout: 2s
+  - name: google-https
+    type: tcp
+    address: google.com:443
+    interval: 10s
+    timeout: 2s
+  - name: github-dns
+    type: dns
+    address: github.com
+    interval: 30s
+    timeout: 2s
