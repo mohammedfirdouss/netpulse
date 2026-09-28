@@ -1,0 +1,42 @@
+groups:
+  - name: netpulse
+    rules:
+      - alert: NetPulseDown
+        expr: up{job="netpulse"} == 0
+        for: 30s
+        labels: {severity: critical}
+        annotations:
+          summary: "NetPulse exporter is not being scraped"
+
+      - alert: TargetDown
+        expr: netpulse_probe_up == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "{{ $labels.target }} ({{ $labels.type }}) unreachable for 1m"
+
+      # Loss from counters over a window, not a last-probe gauge. The sample
+      # floor stops a single failed TCP attempt out of a handful from paging:
+      # at a 10s interval a TCP target sends 30 attempts per 5m, ICMP 150.
+      # Low-rate targets (DNS at 30s = 10 per 5m) are covered by TargetDown.
+      - alert: HighPacketLoss
+        expr: |
+          (
+            1 - increase(netpulse_packets_received_total[5m])
+              / increase(netpulse_packets_sent_total[5m])
+          ) > 0.05
+          and increase(netpulse_packets_sent_total[5m]) >= 20
+        for: 1m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.target }} packet loss {{ $value | humanizePercentage }} over 5m"
+
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le, target, type) (rate(netpulse_probe_latency_seconds_bucket[5m]))
+          ) > 0.2
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.target }} ({{ $labels.type }}) p95 latency {{ $value | humanizeDuration }}"
